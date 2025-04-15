@@ -1,12 +1,12 @@
 {
-  "name": "@dexfair/celo-remix-plugin",
-  "displayName": "Celo Plugin",
-  "description": "Deploy and interact with Celo.",
+  "name": "hashkey-remix-plugin",
+  "displayName": "Hashkey Plugin",
+  "description": "Deploy and interact with Hashkey.",
   "events": [],
   "methods": [],
-  "url": " https://dexfair.github.io/celo-remix-plugin",
-  "icon": "https://dexfair.github.io/celo-remix-plugin/icon.png",
-  "documentation": "https://github.com/dexfair/celo-remix-plugin",
+  "url": " https://github.com/leo-shi-dacheng/hashkey-remix-plugin",
+  "icon": "https://github.com/leo-shi-dacheng/hashkey-remix-plugin/banner.png",
+  "documentation": "https://github.com/leo-shi-dacheng/hashkey-remix-plugin",
   "version": "0.2.0-beta",
   "location": "sidePanel"
 }
