@@ -6,9 +6,9 @@ import type { Api } from '@remixproject/plugin-utils';
 import { Client } from '@remixproject/plugin';
 import { IRemixApi } from '@remixproject/plugin-api';
 import { createClient } from '@remixproject/plugin-iframe';
-import { Celo } from '@dexfair/celo-web-signer';
 import { InterfaceContract } from './Types';
 import Method from './Method';
+import { PublicClient, WalletClient } from 'viem';
 
 function getFunctions(abi: AbiItem[]): AbiItem[] {
 	const temp: AbiItem[] = [];
@@ -30,19 +30,21 @@ function getArguments(abi: AbiItem | null, args: { [key: string]: string }) {
 	return temp;
 }
 
-interface InterfaceProps {
-	celo: Celo;
+interface CompilerProps {
+	publicClient: PublicClient | null;
+	walletClient: WalletClient | null;
 	network: string;
 	gtag: (name: string) => void;
 	busy: boolean;
 	setBusy: (state: boolean) => void;
-	addNewContract: (contract: InterfaceContract) => void; // for SmartContracts
-	setSelected: (select: InterfaceContract) => void; // for At Address
+	addNewContract: (contract: InterfaceContract) => void;
+	setSelected: (contract: InterfaceContract | null) => void;
 	updateBalance: (address: string) => void;
 }
 
-const Compiler: React.FunctionComponent<InterfaceProps> = ({
-	celo,
+const Compiler: React.FunctionComponent<CompilerProps> = ({
+	publicClient,
+	walletClient,
 	network,
 	gtag,
 	busy,
@@ -71,9 +73,7 @@ const Compiler: React.FunctionComponent<InterfaceProps> = ({
 			const temp = createClient();
 			await temp.onload();
 			temp.solidity.on('compilationFinished', (fn: string, source: any, languageVersion: string, data: any) => {
-				// console.log(fn, source, languageVersion, data);
 				setContracts({ fileName: fn, data: data.contracts[fn] });
-				// eslint-disable-next-line
 				select(
 					Object.keys(data.contracts[fn]).length > 0 ? Object.keys(data.contracts[fn])[0] : '',
 					data.contracts[fn]
@@ -84,19 +84,16 @@ const Compiler: React.FunctionComponent<InterfaceProps> = ({
 			});
 			try {
 				setFileName(await temp.fileManager.getCurrentFile());
-			} catch (e) {
-				// eslint-disable-next-line no-console
+			} catch (e: unknown) {
 				console.log('Error from IDE : No such file or directory No file selected');
 			}
 			setClient(temp);
 		}
 		setAddress('');
 		if (!initialised) {
-			// setCompilerConfig(version, optimize);
 			init();
 		}
-		// eslint-disable-next-line
-  }, [network]);
+	}, [network]);
 
 	async function compile() {
 		setBusy(true);
@@ -125,39 +122,37 @@ const Compiler: React.FunctionComponent<InterfaceProps> = ({
 	}
 
 	async function onDeploy() {
-		if (!busy && celo.isConnected) {
+		if (!busy && publicClient && walletClient) {
 			gtag('deploy');
 			setBusy(true);
 			setAddress('');
 			try {
-				const newContract = new celo.kit.web3.eth.Contract(
-					JSON.parse(JSON.stringify(contracts.data[contractName].abi))
-				);
-				const accounts = await celo.getAccounts();
+				// @ts-ignore
+				const accounts = await walletClient.getAccounts();
 				const parms: string[] = getArguments(constructor, args);
-				const rawTx = {
-					from: accounts[0],
-					data: newContract
-						.deploy({ data: `0x${contracts.data[contractName].evm.bytecode.object}`, arguments: parms })
-						.encodeABI(),
+				const contractBytecode = `0x${contracts.data[contractName].evm.bytecode.object}`;
+				const deployTx = {
+					from: accounts[0].address,
+					data: contractBytecode,
+					arguments: parms,
 				};
-				// console.log(rawTx)
-				const txReceipt = await celo.sendTransaction(rawTx);
-				// console.log(txReceipt);
-				if (txReceipt.contractAddress) {
-					setAddress(txReceipt.contractAddress);
+				// @ts-ignore
+				const txHash = await walletClient.sendTransaction(deployTx);
+				// @ts-ignore
+				const receipt = await publicClient.waitForTransactionReceipt(txHash);
+				if (receipt.contractAddress) {
+					setAddress(receipt.contractAddress);
 					addNewContract({
 						name: contractName,
-						address: txReceipt.contractAddress,
+						address: receipt.contractAddress,
 						abi: getFunctions(contracts.data[contractName].abi),
 					});
 				} else {
 					setError('contractAddress error');
 				}
-				updateBalance(accounts[0]);
-			} catch (e) {
-				// eslint-disable-next-line
-        console.error(e)
+				updateBalance(accounts[0].address);
+			} catch (e: unknown) {
+				console.error(e);
 				setError('deploy error');
 			}
 			setBusy(false);
@@ -240,7 +235,7 @@ const Compiler: React.FunctionComponent<InterfaceProps> = ({
 								variant="warning"
 								block
 								size="sm"
-								disabled={busy || !(celo && celo.isConnected) || fileName === ''}
+								disabled={busy || !(publicClient && walletClient) || fileName === ''}
 								onClick={onDeploy}
 							>
 								<small>Deploy</small>

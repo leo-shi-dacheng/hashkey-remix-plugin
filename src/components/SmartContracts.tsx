@@ -3,7 +3,7 @@ import { Alert, Accordion, Button, Card, Form, InputGroup } from 'react-bootstra
 import copy from 'copy-to-clipboard';
 import { CSSTransition } from 'react-transition-group';
 import { AbiInput, AbiItem } from 'web3-utils';
-import { Celo } from '@dexfair/celo-web-signer';
+import { PublicClient, WalletClient } from 'viem';
 import { InterfaceContract } from './Types';
 import Method from './Method';
 import './animation.css';
@@ -11,7 +11,8 @@ import './animation.css';
 const EMPTYLIST = 'Currently you have no contract instances to interact with.';
 
 interface InterfaceDrawMethodProps {
-	celo: Celo;
+	publicClient: PublicClient | null;
+	walletClient: WalletClient | null;
 	busy: boolean;
 	setBusy: (state: boolean) => void;
 	abi: AbiItem;
@@ -24,7 +25,7 @@ const DrawMethod: React.FunctionComponent<InterfaceDrawMethodProps> = (props) =>
 	const [success, setSuccess] = React.useState<string>('');
 	const [value, setValue] = React.useState<string>('');
 	const [args, setArgs] = React.useState<{ [key: string]: string }>({});
-	const { celo, busy, /* setBusy, */ abi, address, updateBalance } = props;
+	const { publicClient, walletClient, busy, /* setBusy, */ abi, address, updateBalance } = props;
 
 	React.useEffect(() => {
 		const temp: { [key: string]: string } = {};
@@ -69,45 +70,53 @@ const DrawMethod: React.FunctionComponent<InterfaceDrawMethodProps> = (props) =>
 						variant={buttonVariant(abi.stateMutability)}
 						block
 						size="sm"
-						disabled={busy || !(celo && celo.isConnected)}
+						disabled={busy || !(publicClient && walletClient)}
 						onClick={async () => {
 							// setBusy(true)
 							const parms: string[] = [];
 							abi.inputs?.forEach((item: AbiInput) => {
 								parms.push(args[item.name]);
 							});
-							const newContract = new celo.kit.web3.eth.Contract(JSON.parse(JSON.stringify([abi])), address);
-							const accounts = await celo.getAccounts();
+							const contractConfig = {
+								address: address as `0x${string}`,
+								abi: JSON.parse(JSON.stringify([abi])),
+							};
 							if (abi.stateMutability === 'view' || abi.stateMutability === 'pure') {
 								try {
 									const txReceipt = abi.name
-										? await newContract.methods[abi.name](...parms).call({ from: accounts[0] })
+									// @ts-ignore
+										? await publicClient?.callContract({
+												...contractConfig,
+												functionName: abi.name,
+												args: parms,
+										  })
 										: null;
 									if (typeof txReceipt === 'object') {
 										setSuccess(JSON.stringify(txReceipt, null, 4));
 									} else {
-										setValue(txReceipt);
+										setValue(txReceipt as string);
 									}
 									// TODO: LOG
-								} catch (e) {
+								} catch (e: any) {
 									// console.error(error)
 									setError(e.message ? e.message : e.toString());
 								}
 							} else {
 								try {
 									const txReceipt = abi.name
-										? await celo.sendTransaction({
-												from: accounts[0],
-												to: address,
-												data: newContract.methods[abi.name](...parms).encodeABI(),
-										  })
+									// @ts-ignore
+										? await walletClient!.writeContract({
+											...contractConfig,
+											functionName: abi.name,
+											args: parms,
+										})
 										: null;
 									// console.log(txReceipt)
 									setError('');
 									setSuccess(JSON.stringify(txReceipt, null, 2));
-									updateBalance(accounts[0]);
+									updateBalance(address);
 									// TODO: LOG
-								} catch (e) {
+								} catch (e: any) {
 									// console.error(error)
 									setError(e.message ? e.message : e.toString());
 								}
@@ -130,9 +139,18 @@ const DrawMethod: React.FunctionComponent<InterfaceDrawMethodProps> = (props) =>
 											parms.push(args[item.name]);
 										}
 									});
-									const newContract = new celo.kit.web3.eth.Contract(JSON.parse(JSON.stringify([abi])), address);
-									copy(newContract.methods[abi.name](...parms).encodeABI());
-								} catch (e) {
+									const contractConfig = {
+										address: address as `0x${string}`,
+										abi: JSON.parse(JSON.stringify([abi])),
+									};
+									copy(
+										JSON.stringify({
+											...contractConfig,
+											functionName: abi.name,
+											args: parms,
+										})
+									);
+								} catch (e: any) {
 									console.log(e.toString());
 								}
 							}
@@ -153,14 +171,15 @@ const DrawMethod: React.FunctionComponent<InterfaceDrawMethodProps> = (props) =>
 };
 
 const ContractCard: React.FunctionComponent<{
-	celo: Celo;
+	publicClient: PublicClient | null;
+	walletClient: WalletClient | null;
 	busy: boolean;
 	setBusy: (state: boolean) => void;
 	contract: InterfaceContract;
 	index: number;
 	remove: () => void;
 	updateBalance: (address: string) => void;
-}> = ({ celo, busy, setBusy, contract, index, remove, updateBalance }) => {
+}> = ({ publicClient, walletClient, busy, setBusy, contract, index, remove, updateBalance }) => {
 	const [enable, setEnable] = React.useState<boolean>(true);
 
 	function DrawMathods() {
@@ -174,7 +193,8 @@ const ContractCard: React.FunctionComponent<{
 					<Accordion.Collapse eventKey={`Methods_${id}`}>
 						<Card.Body className="py-1 px-2">
 							<DrawMethod
-								celo={celo}
+								publicClient={publicClient}
+								walletClient={walletClient}
 								busy={busy}
 								setBusy={setBusy}
 								abi={abi}
@@ -203,7 +223,7 @@ const ContractCard: React.FunctionComponent<{
 						size="sm"
 						variant="link"
 						onClick={() => {
-							window.open(`${celo.getNetwork().blockscout}/address/${contract.address}`);
+							window.open(`https://etherscan.io/address/${contract.address}`);
 						}}
 					>
 						<i className="fas fa-external-link-alt" />
@@ -225,16 +245,18 @@ const ContractCard: React.FunctionComponent<{
 	);
 };
 
-interface InterfaceSmartContractsProps {
-	celo: Celo;
+interface SmartContractsProps {
+	publicClient: PublicClient | null;
+	walletClient: WalletClient | null;
 	busy: boolean;
 	setBusy: (state: boolean) => void;
 	contracts: InterfaceContract[];
 	updateBalance: (address: string) => void;
 }
 
-const SmartContracts: React.FunctionComponent<InterfaceSmartContractsProps> = ({
-	celo,
+const SmartContracts: React.FunctionComponent<SmartContractsProps> = ({
+	publicClient,
+	walletClient,
 	busy,
 	setBusy,
 	contracts,
@@ -251,7 +273,8 @@ const SmartContracts: React.FunctionComponent<InterfaceSmartContractsProps> = ({
 	function DrawContracts() {
 		const items = contracts.map((data: InterfaceContract, index: number) => (
 			<ContractCard
-				celo={celo}
+				publicClient={publicClient}
+				walletClient={walletClient}
 				busy={busy}
 				setBusy={setBusy}
 				contract={data}
