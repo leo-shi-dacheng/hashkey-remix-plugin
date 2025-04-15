@@ -4035,6 +4035,11 @@ bootstrap@^4.6.0:
   resolved "https://registry.npmmirror.com/bootstrap/-/bootstrap-4.6.2.tgz#8e0cd61611728a5bf65a3a2b8d6ff6c77d5d7479"
   integrity sha512-51Bbp/Uxr9aTuy6ca/8FbFloBUJZLHwnhTcnjIeRn2suQWsWzcuJhGjKDB5eppVte/8oCdOL3VuwxvZDUggwGQ==
 
+bootswatch@^5.3.5:
+  version "5.3.5"
+  resolved "https://registry.npmmirror.com/bootswatch/-/bootswatch-5.3.5.tgz#f137386268c92095d52585f30ce891496e2adaae"
+  integrity sha512-1z8LNoUL5NHmv/hNROALQ6qtjw9OJIjMgP8ovBlIft+oI15b/mvnzxGL896iO9LtoDZH0Vdm+D2YW+j03GduSg==
+
 bowser@^2.9.0:
   version "2.11.0"
   resolved "https://registry.npmmirror.com/bowser/-/bowser-2.11.0.tgz#5ca3c35757a7aa5771500c70a73a9f91ef420a8f"
