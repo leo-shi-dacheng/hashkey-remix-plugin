@@ -106,9 +106,9 @@ const App: React.FunctionComponent = () => {
     // Add a null check for publicClient
     if (address !== '' && publicClient) {
       try {
-		// @ts-ignore
-        const balance = await publicClient.getBalance({ address: address as `0x${string}` });
-        setBalance(formatEther(balance));
+		  // @ts-ignore
+        const balanc = await publicClient.getBalance({ address: address as `0x${string}` });
+        setBalance(formatEther(balanc));
       } catch (error) {
         console.error('Error fetching balance:', error);
         setBalance('Error');
@@ -287,6 +287,7 @@ const App: React.FunctionComponent = () => {
           walletClient={walletClient}
           busy={busy}
           setBusy={setBusy}
+          network={network}
           contracts={contracts}
           updateBalance={updateBalance}
         />

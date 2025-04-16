@@ -177,9 +177,10 @@ const ContractCard: React.FunctionComponent<{
 	setBusy: (state: boolean) => void;
 	contract: InterfaceContract;
 	index: number;
+	network: string;
 	remove: () => void;
 	updateBalance: (address: string) => void;
-}> = ({ publicClient, walletClient, busy, setBusy, contract, index, remove, updateBalance }) => {
+}> = ({ publicClient, walletClient, busy, setBusy, contract, index, remove, updateBalance, network }) => {
 	const [enable, setEnable] = React.useState<boolean>(true);
 
 	function DrawMathods() {
@@ -223,7 +224,11 @@ const ContractCard: React.FunctionComponent<{
 						size="sm"
 						variant="link"
 						onClick={() => {
-							window.open(`https://etherscan.io/address/${contract.address}`);
+							let explorer = 'https://hashkey.blockscout.com/';
+							if (network === 'HashKeyTestnet') {
+								explorer = 'https://hashkeychain-testnet-explorer.alt.technology/';
+							}
+							window.open(`${explorer}${contract.address}`);
 						}}
 					>
 						<i className="fas fa-external-link-alt" />
@@ -252,6 +257,7 @@ interface SmartContractsProps {
 	setBusy: (state: boolean) => void;
 	contracts: InterfaceContract[];
 	updateBalance: (address: string) => void;
+	network: string;
 }
 
 const SmartContracts: React.FunctionComponent<SmartContractsProps> = ({
@@ -261,6 +267,7 @@ const SmartContracts: React.FunctionComponent<SmartContractsProps> = ({
 	setBusy,
 	contracts,
 	updateBalance,
+	network,
 }) => {
 	const [error, setError] = React.useState<string>('');
 	const [count, setCount] = React.useState<number>(0);
@@ -278,6 +285,7 @@ const SmartContracts: React.FunctionComponent<SmartContractsProps> = ({
 				busy={busy}
 				setBusy={setBusy}
 				contract={data}
+				network={network}
 				index={index}
 				remove={() => {
 					setCount(count + 1);
