@@ -1,6 +1,6 @@
 {
   "name": "hashkey-remix-plugin",
-  "displayName": "Hashkey Plugin",
+  "displayName": "Hashkey Remix Plugin",
   "description": "Deploy and interact with Hashkey.",
   "events": [],
   "methods": [],
